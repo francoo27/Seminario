@@ -93,8 +93,8 @@
   let meanOfServerUtilizationArr = [];
   let simRunning = false;
   let resetTimer = 0;
-  let midTimeArrival = 8.0
-  let midTimeService = 9.0
+  let midTimeArrival = 0.8
+  let midTimeService = 0.9
 
 
   const queueSizeData = {
@@ -208,7 +208,7 @@
   function print_js(sim){
     addData(queueSizeChart, sim.clock, sim.queueSize) 
     addData(timeServiceAcumulatedChart, sim.clock, sim.timeServiceAcumulated)
-    addData(meanOfServerUtilizationChart, sim.clock, sim.meanOfServerUtilization)
+    addData(meanOfServerUtilizationChart, sim.clock, sim.meanOfServerUtilization >= 1 ? 1 : sim.meanOfServerUtilization)
     document.getElementById("runSimulation").className = "btn btn-success";
     document.getElementById("runSimulation").className = "btn btn-success";
     document.getElementById("runSimulation").className = "btn btn-success";

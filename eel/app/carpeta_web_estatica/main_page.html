@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+</head>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js" integrity="sha384-eMNCOe7tC1doHpGoWe/6oMVemdAVTMs2xqW4mwXrXsW0L84Iytr2wi5v2QjrP/xp" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.min.js" integrity="sha384-cn7l7gDp0eyniUwwAZgrzD06kc/tftFf19TOAs2zVinnD/C7E91j9yyk5//jjpt/" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<body>
+    <div class="container-flex">
+        <div class="row">
+            <div class="col-6 col-xs-6 col-sm-6">
+                <div>
+                    <canvas id="queueSizeChart"></canvas>
+                </div>
+            </div>
+          <div class="col-6 col-xs-6 col-sm-6">
+            <div>
+              <canvas id="timeServiceAcumulatedChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-6 col-xs-6 col-sm-6">
+            <div>
+              <canvas id="meanOfServerUtilizationChart"></canvas>
+            </div>
+          </div>
+          <div class="col-6 col-xs-6 col-sm-6">
+            <div class="col-12 col-xs-12 col-sm-12 d-flex align-items-center justify-content-center">
+              <div class="col-6 col-xs-6 col-sm-6">
+                <table class="table table-sm">
+                  <thead>
+                    <th scope="row"></th>
+                    <th scope="row"></th>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Clock</th>
+                      <td id="clock"></td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Clientes en cola</th>
+                      <td id="numberOfClientsInQueue"></td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Eventos</th>
+                      <td id="nextClockEvents"></td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Proximo Evento</th>
+                      <td><span id="nextEventType"></span></td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Area de Q</th>
+                      <td id="QArea"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-12 col-xs-12 col-sm-12 d-flex align-items-center justify-content-center">
+              <button id="runSimulation" class="btn btn-success" onclick="runSimulation()">Start</button>
+              <button id="resetSimulation" class="btn btn-secondary" onclick="restartSimulation()">Reset</button>
+            </div>
+            <div class="col-12 col-xs-12 col-sm-12 d-flex align-items-center justify-content-center">
+              <div class="col-6 col-xs-6 col-sm-6">
+                <label for="midTimeArrival" class="form-label">Tiempo medio entre arribos</label>
+                <input type="range" class="form-range" min="0.05" max="1" step="0.05" id="midTimeArrival" onchange="changeMidTimeArrival(this.value)">
+              </div>
+            </div>
+            <div class="col-12 col-xs-12 col-sm-12 d-flex align-items-center justify-content-center">
+              <div class="col-6 col-xs-6 col-sm-6">
+                <label for="midTimeService" class="form-label">Tiempo medio de servicio</label>
+                <input type="range" class="form-range" min="0.05" max="1" step="0.05" id="midTimeService" onchange="changeMidTimeService(this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+</body>
+<script type="text/javascript" src="/eel.js"></script>
+<script>
+  let clockqueueSizeArr = [];
+  let clocktimeServiceAcumulatedAr = [];
+  let clockmeanOfServerUtilizationArr = [];
+  let queueSizeArr = [];
+  let timeServiceAcumulatedArr = [];
+  let meanOfServerUtilizationArr = [];
+  let simRunning = false;
+  let resetTimer = 0;
+  let midTimeArrival = 8.0
+  let midTimeService = 9.0
+
+
+  const queueSizeData = {
+    labels: clockqueueSizeArr,
+    datasets: [{
+      label: 'Longitud de cola',
+      backgroundColor: 'rgb(255, 99, 132)',
+      borderColor: 'rgb(255, 99, 132)',
+      data: queueSizeArr,
+    }]
+  };
+
+  const queueSizeConfig = {
+    type: 'line',
+    data: queueSizeData,
+    options: {}
+  };
+
+
+  var queueSizeChart = new Chart(
+    document.getElementById('queueSizeChart'),
+    queueSizeConfig
+  );
+
+
+  const timeServiceAcumulatedData = {
+    labels: clocktimeServiceAcumulatedAr,
+    datasets: [{
+      label: 'Tiempo de servicio acumulado',
+      backgroundColor: 'rgb(56, 114, 108)',
+      borderColor: 'rgb(56, 114, 108)',
+      data: timeServiceAcumulatedArr,
+      fill: 'start'
+    }]
+  };
+
+  const timeServiceAcumulatedConfig = {
+    type: 'line',
+    data: timeServiceAcumulatedData,
+    options: {}
+  };
+
+
+  var timeServiceAcumulatedChart = new Chart(
+    document.getElementById('timeServiceAcumulatedChart'),
+    timeServiceAcumulatedConfig
+  );
+
+
+  const meanOfServerUtilizationData = {
+    labels: clockmeanOfServerUtilizationArr,
+    datasets: [{
+      label: 'Media de utilizacion de servidor',
+      backgroundColor: 'rgb(0, 143, 213)',
+      borderColor: 'rgb(0, 143, 213)',
+      data: meanOfServerUtilizationArr,
+    }]
+  };
+
+  const meanOfServerUtilizationConfig = {
+    type: 'line',
+    data: meanOfServerUtilizationData,
+    options: {}
+  };
+
+
+  var meanOfServerUtilizationChart = new Chart(
+    document.getElementById('meanOfServerUtilizationChart'),
+    meanOfServerUtilizationConfig
+  );
+
+
+  function addData(chart, label, data) {  
+    chart.data.labels.push(label);
+    chart.data.datasets.forEach((dataset) => {
+        dataset.data.push(data);
+    });
+    chart.update('none');
+}
+
+  function runSimulation(){
+    simRunning = !simRunning;
+    document.getElementById("runSimulation").className = "btn btn-danger";
+    document.getElementById("runSimulation").innerText = "Stop";
+    if (simRunning){
+      interval=setInterval(function(){
+        eel.animate(parseFloat(midTimeArrival),parseFloat(midTimeService));
+        if (!simRunning){
+          clearInterval(interval);
+          document.getElementById("runSimulation").className = "btn btn-success";
+          document.getElementById("runSimulation").innerText = "Start";
+        }
+      },100);
+    }
+  }
+
+  function restartSimulation(){
+    eel.restartSimulation();
+    resetData(queueSizeChart);
+    resetData(timeServiceAcumulatedChart);
+    resetData(meanOfServerUtilizationChart);
+    document.getElementById("clock").innerText = "";
+    document.getElementById("nextEventType").innerText = "";
+    document.getElementById("nextEventType").className = "";
+    document.getElementById("nextClockEvents").innerText = "";
+    document.getElementById("numberOfClientsInQueue").innerText = "";
+    document.getElementById("QArea").innerText = "";
+  }
+
+  eel.expose(print_js);
+  function print_js(sim){
+    addData(queueSizeChart, sim.clock, sim.queueSize) 
+    addData(timeServiceAcumulatedChart, sim.clock, sim.timeServiceAcumulated)
+    addData(meanOfServerUtilizationChart, sim.clock, sim.meanOfServerUtilization)
+    document.getElementById("runSimulation").className = "btn btn-success";
+    document.getElementById("runSimulation").className = "btn btn-success";
+    document.getElementById("runSimulation").className = "btn btn-success";
+    document.getElementById("clock").innerText = sim.clock;
+    document.getElementById("nextEventType").innerText = sim.nextEventType;
+    document.getElementById("nextEventType").className = sim.nextEventType === "Salida" ? "badge bg-danger" : "badge bg-success" ;
+    document.getElementById("nextClockEvents").innerText = sim.nextClockEvents;
+    document.getElementById("numberOfClientsInQueue").innerText = sim.numberOfClientsInQueue;
+    document.getElementById("QArea").innerText = sim.QArea;
+  }
+  
+  function removeData(chart) {
+    chart.data.labels.pop();
+    chart.data.datasets.forEach((dataset) => {
+        dataset.data.pop();
+    });
+    chart.update();
+  }
+
+  function resetData(chart) {
+    chart.data.labels = [];
+    chart.data.datasets.forEach((dataset) => {
+        dataset.data = [];
+    });
+    chart.update();
+  }
+
+  function changeMidTimeArrival(val){
+    midTimeArrival = val;
+  }
+
+  function changeMidTimeService(val){
+    midTimeService = val;
+  }
+
+  eel.expose(say_hello_js); // Expose this function to Python
+      function say_hello_js(x) {
+        console.log("Hello from " + x);
+      }
+
+</script>
+
+</html>
